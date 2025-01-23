@@ -4,9 +4,9 @@
 #define DATA_PIN 6
 #define COLS 16
 #define ROWS 16
-#define RED 0x040000
-#define GREEN 0x000400
-#define BLUE 0x000004
+#define RED 0x080000
+#define GREEN 0x000800
+#define BLUE 0x000008
 #define BLANK 0x000000
 
 #define BUTTON1_PIN 12
@@ -32,11 +32,11 @@ const unsigned PLAYER_O = 0b10;
 unsigned curr_player = PLAYER_X;
 unsigned curr_state[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-void clear() {
+void clear(bool dots) {
   for (unsigned x = 0; x < COLS; x++) {
     for (unsigned y = 0; y < ROWS; y++) {
       unsigned curr = translateXY(x, y);
-      if (x % 5 == 2 && y % 5 == 2) {
+      if (x % 5 == 2 && y % 5 == 2 && dots) {
         leds[curr] = BLUE;
       } else {
         leds[curr] = BLANK;
@@ -86,6 +86,36 @@ void drawX(unsigned start_x, unsigned start_y) {
   drawPixel(x, y, RED);
 }
 
+void animDrawX(unsigned start_x, unsigned start_y) {
+  unsigned x = start_x + 2;
+  unsigned y = start_y + 2;
+  drawPixel(x, y, RED);
+  FastLED.show();
+  delay(100);
+  x += 1;
+  y += 1;
+  drawPixel(x, y, RED);
+  x -= 2;
+  drawPixel(x, y, RED);
+  y -= 2;
+  drawPixel(x, y, RED);
+  x += 2;
+  drawPixel(x, y, RED);
+  FastLED.show();
+  delay(100);
+  x += 1;
+  y += 3;
+  drawPixel(x, y, RED);
+  x -= 4;
+  drawPixel(x, y, RED);
+  y -= 4;
+  drawPixel(x, y, RED);
+  x += 4;
+  drawPixel(x, y, RED);
+  FastLED.show();
+  delay(100);
+}
+
 void drawO(unsigned start_x, unsigned start_y) {
   unsigned x = start_x;
   unsigned y = start_y;
@@ -122,6 +152,85 @@ void drawO(unsigned start_x, unsigned start_y) {
   drawPixel(x, y, GREEN);
   x += 1;
   drawPixel(x, y, GREEN);
+}
+
+void resetO(unsigned start_x, unsigned start_y) {
+  for (unsigned dx = 0; dx < 5; dx++) {
+    for (unsigned dy = 0; dy < 5; dy++) {
+      drawPixel(start_x + dx, start_y + dy, BLANK);
+    }
+  }
+}
+
+void animDrawO(unsigned start_x, unsigned start_y) {
+  unsigned x = start_x + 2;
+  unsigned y = start_y + 2;
+  drawPixel(x, y, GREEN);
+  FastLED.show();
+  delay(100);
+  resetO(start_x, start_y);
+  x += 1;
+  drawPixel(x, y, GREEN);
+  y += 1;
+  drawPixel(x, y, GREEN);
+  x -= 1;
+  drawPixel(x, y, GREEN);
+  x -= 1;
+  drawPixel(x, y, GREEN);
+  y -= 1;
+  drawPixel(x, y, GREEN);
+  y -= 1;
+  drawPixel(x, y, GREEN);
+  x += 1;
+  drawPixel(x, y, GREEN);
+  x += 1;
+  drawPixel(x, y, GREEN);
+  FastLED.show();
+  delay(100);
+  resetO(start_x, start_y);
+  y += 1;
+  x += 1;
+  drawPixel(x, y, GREEN);
+  y += 1;
+  drawPixel(x, y, GREEN);
+  y += 1;
+  drawPixel(x, y, GREEN);
+  x -= 1;
+  drawPixel(x, y, GREEN);
+  x -= 1;
+  drawPixel(x, y, GREEN);
+  x -= 1;
+  drawPixel(x, y, GREEN);
+  x -= 1;
+  drawPixel(x, y, GREEN);
+  y -= 1;
+  drawPixel(x, y, GREEN);
+  y -= 1;
+  drawPixel(x, y, GREEN);
+  y -= 1;
+  drawPixel(x, y, GREEN);
+  y -= 1;
+  drawPixel(x, y, GREEN);
+  x += 1;
+  drawPixel(x, y, GREEN);
+  x += 1;
+  drawPixel(x, y, GREEN);
+  x += 1;
+  drawPixel(x, y, GREEN);
+  x += 1;
+  drawPixel(x, y, GREEN);
+  y += 1;
+  drawPixel(x, y, GREEN);
+  FastLED.show();
+  delay(100);
+}
+
+void animDraw(unsigned x, unsigned y, unsigned player) {
+  if (player == PLAYER_X) {
+    animDrawX(x, y);
+  } else {
+    animDrawO(x, y);
+  }
 }
 
 void cycle() {
@@ -211,16 +320,40 @@ unsigned primitiveValue(unsigned* state) {
   for (int i = 0; i < 3; i++) {
     unsigned rowstart = i * 3;
     if (state[rowstart] != 0 && state[rowstart] == state[rowstart + 1] && state[rowstart] == state[rowstart + 2]) {
+      clear(false);
+      delay(500);
+      unsigned p = state[rowstart];
+      animDraw(10, (2 - i) * 5, p);
+      animDraw(5, (2 - i) * 5, p);
+      animDraw(0, (2 - i) * 5, p);
       return 1;
     }
     if (state[i] != 0 && state[i] == state[i + 3] && state[i] == state[i + 6]) {
+      clear(false);
+      delay(500);
+      unsigned p = state[i];
+      animDraw((2 - i) * 5, 10, p);
+      animDraw((2 - i) * 5, 5, p);
+      animDraw((2 - i) * 5, 0, p);
       return 1;
     }
   }
   if (state[0] != 0 && state[0] == state[4] && state[0] == state[8]) {
+    clear(false);
+    delay(500);
+    unsigned p = state[0];
+    animDraw(10, 10, p);
+    animDraw(5, 5, p);
+    animDraw(0, 0, p);
     return 1;
   }
   if (state[2] != 0 && state[2] == state[4] && state[2] == state[6]) {
+    clear(false);
+    delay(500);
+    unsigned p = state[2];
+    animDraw(10, 0, p);
+    animDraw(5, 5, p);
+    animDraw(0, 10, p);
     return 1;
   }
   for (int i = 0; i < 9; i++) {
@@ -248,7 +381,7 @@ void updateBoard(unsigned* state) {
 
 void setup() {
   FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
-  clear();
+  clear(true);
   FastLED.show();
   pinMode(BUTTON1_PIN, INPUT);
   pinMode(BUTTON2_PIN, INPUT);
@@ -291,7 +424,7 @@ void loop() {
     Serial.print("\n");
     Serial.print("\n");
     curr_player ^= 0b11;
-    clear();
+    clear(true);
     updateBoard(curr_state);
     FastLED.show();
     if (primitiveValue(curr_state) == 0) {
@@ -300,6 +433,16 @@ void loop() {
       Serial.print("gameover\n");
       gamestate = GameOver;
     }
+  } else if (gamestate == GameOver) {
+    getInput();
+    gamestate = SelectRow;
+    for (unsigned i = 0; i < 9; i++) {
+      curr_state[i] = 0;
+    }
+    curr_player = PLAYER_X;
+    clear(true);
+    delay(200);
+    FastLED.show();
   }
 }
 /*
