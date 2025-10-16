@@ -4,8 +4,10 @@
 #define DATA_PIN 6
 #define COLS 16
 #define ROWS 16
-#define RED 0x080000
-#define GREEN 0x000800
+#define RED 0x0A0000
+#define LIGHT_RED 0x020000
+#define GREEN 0x000A00
+#define LIGHT_GREEN 0x000200
 #define BLUE 0x000008
 #define BLANK 0x000000
 
@@ -60,30 +62,31 @@ void drawPixel(unsigned x, unsigned y, CRGB color) {
   leds[pos] = color;
 }
 
-void drawX(unsigned start_x, unsigned start_y) {
+void drawX(unsigned start_x, unsigned start_y, unsigned age) {
   unsigned x = start_x;
   unsigned y = start_y;
-  drawPixel(x, y, RED);
+  struct CRGB color = age < 5 ? RED : LIGHT_RED;
+  drawPixel(x, y, color);
   x += 4;
-  drawPixel(x, y, RED);
+  drawPixel(x, y, color);
   y += 1;
   x -= 3;
-  drawPixel(x, y, RED);
+  drawPixel(x, y, color);
   x += 2;
-  drawPixel(x, y, RED);
+  drawPixel(x, y, color);
   y += 1;
   x -= 1;
-  drawPixel(x, y, RED);
+  drawPixel(x, y, color);
   y += 1;
   x -= 1;
-  drawPixel(x, y, RED);
+  drawPixel(x, y, color);
   x += 2;
-  drawPixel(x, y, RED);
+  drawPixel(x, y, color);
   y += 1;
   x -= 3;
-  drawPixel(x, y, RED);
+  drawPixel(x, y, color);
   x += 4;
-  drawPixel(x, y, RED);
+  drawPixel(x, y, color);
 }
 
 void animDrawX(unsigned start_x, unsigned start_y) {
@@ -116,42 +119,43 @@ void animDrawX(unsigned start_x, unsigned start_y) {
   delay(100);
 }
 
-void drawO(unsigned start_x, unsigned start_y) {
+void drawO(unsigned start_x, unsigned start_y, unsigned age) {
   unsigned x = start_x;
   unsigned y = start_y;
-  drawPixel(x, y, GREEN);
+  struct CRGB color = age < 5 ? GREEN : LIGHT_GREEN;
+  drawPixel(x, y, color);
   x += 1;
-  drawPixel(x, y, GREEN);
+  drawPixel(x, y, color);
   x += 1;
-  drawPixel(x, y, GREEN);
+  drawPixel(x, y, color);
   x += 1;
-  drawPixel(x, y, GREEN);
+  drawPixel(x, y, color);
   x += 1;
-  drawPixel(x, y, GREEN);
+  drawPixel(x, y, color);
   y += 1;
-  drawPixel(x, y, GREEN);
+  drawPixel(x, y, color);
   x -= 4;
-  drawPixel(x, y, GREEN);
+  drawPixel(x, y, color);
   y += 1;
-  drawPixel(x, y, GREEN);
+  drawPixel(x, y, color);
   x += 2;
   drawPixel(x, y, BLANK);
   x += 2;
-  drawPixel(x, y, GREEN);
+  drawPixel(x, y, color);
   y += 1;
-  drawPixel(x, y, GREEN);
+  drawPixel(x, y, color);
   x -= 4;
-  drawPixel(x, y, GREEN);
+  drawPixel(x, y, color);
   y += 1;
-  drawPixel(x, y, GREEN);
+  drawPixel(x, y, color);
   x += 1;
-  drawPixel(x, y, GREEN);
+  drawPixel(x, y, color);
   x += 1;
-  drawPixel(x, y, GREEN);
+  drawPixel(x, y, color);
   x += 1;
-  drawPixel(x, y, GREEN);
+  drawPixel(x, y, color);
   x += 1;
-  drawPixel(x, y, GREEN);
+  drawPixel(x, y, color);
 }
 
 void resetO(unsigned start_x, unsigned start_y) {
@@ -316,7 +320,11 @@ void drawColSelected(unsigned col) {
 // 0 is not primitive
 // 1 is lose
 // 2 is tie
-unsigned primitiveValue(unsigned* state) {
+unsigned primitiveValue(unsigned* in_state) {
+  unsigned state[9];
+  for (int i = 0; i < 9; i++) {
+    state[i] = in_state[i] & 0b11;
+  }
   for (int i = 0; i < 3; i++) {
     unsigned rowstart = i * 3;
     if (state[rowstart] != 0 && state[rowstart] == state[rowstart + 1] && state[rowstart] == state[rowstart + 2]) {
@@ -366,15 +374,16 @@ unsigned primitiveValue(unsigned* state) {
 
 void updateBoard(unsigned* state) {
   for (unsigned pos = 0; pos < 9; pos++) {
-    unsigned val = state[8 - pos];
+    unsigned val = state[8 - pos] & 0b11;
+    unsigned age = (state[8 - pos] >> 2) & 0b111;
     unsigned draw_x = (pos % 3) * 5;
     unsigned draw_y = (pos / 3) * 5;
     if (val == PLAYER_X) {
       Serial.print("X");
-      drawX(draw_x, draw_y);
+      drawX(draw_x, draw_y, age);
     } else if (val == PLAYER_O) {
       Serial.print("O");
-      drawO(draw_x, draw_y);
+      drawO(draw_x, draw_y, age);
     }
   }
 }
@@ -387,6 +396,18 @@ void setup() {
   pinMode(BUTTON2_PIN, INPUT);
   pinMode(BUTTON3_PIN, INPUT);
   Serial.begin(9600);
+}
+
+void updateAge(unsigned* state) {
+  for (int i = 0; i < 9; i++) {
+    unsigned piece = state[i];
+    if (((piece >> 2) & 0b111) >= 5) {
+      Serial.print("deleted\n");
+      state[i] = 0;
+    } else if ((piece & 0b11) != 0) {
+      state[i] = piece + 0b100;
+    }
+  }
 }
 
 void loop() {
@@ -416,6 +437,7 @@ void loop() {
   } else if (gamestate == PlacePiece) {
     delay(500);
     unsigned pos = curr_row * 3 + curr_col;
+    updateAge(curr_state);
     curr_state[pos] = curr_player;
     Serial.print("piece placed at: ");
     Serial.print(curr_row);
